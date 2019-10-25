@@ -1,1 +1,182 @@
+---
+title: "Lab9_DataBetas"
+author: "Drew Hoffman, Tanner Ball, Burke Parent, David Washburn, Brandon Nelsen"
+date: "10/21/2019"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+
+```
+
+```{r, echo=FALSE}
+alpitching <- read.csv(file="alpitching.csv", header=TRUE, sep=",")
+nlpitching <- read.csv(file="nlpitching.csv", header=TRUE, sep=",")
+albatting <- read.csv("albatting.csv", TRUE, ",")
+nlbatting <- read.csv("nlbatting.csv", TRUE, ",")
+#pitching data
+#ERA. means ERA+, 100 is an average pitcher
+#SO.W is strikeout to walk ratio
+#Innings pitched end in .1 and .2, that stands for 1/3 of an inning and 2/3 of an inning so you can't add them
+#Total innings pitched: NL 21732.2   AL 21690.2
+```
+
+
+
+***1. Overall team question, why it’s important, and why those reasons are important***
+
+**How do different rules across the two baseball leagues affect pitchers' statistics?**
+
+This is an important question because Major League Baseball is unique in that there are two separate sets of rules for the two conferences. In one league, the National League, the pitcher is required to go up to bat, while in the American League there is a Designated Hitter that bats in place of the pitcher. The reason for this is that pitchers are traditionally poor hitters and the American League implemented a rule in 1973 to have a player that doesn't go into the field but bats when the pitcher's spot comes up. The teams therefore have two separate styles of play and have to make decisions accordingly. Pitchers from the American League have to face one extra strong hitter in the average lineup that they wouldn't in the National League. We want to find out if that has a tangible effect on the statistics of the pitchers and if they should be judged under a different set of criteria when evaluating a player.
+
+***2. A conclusion answering the main question(s)***
+
+
+
+***3. Your team’s recommendation and why implementing it is important for the domain expert who hired you***
+
+
+
+***4. A brief description of the dataset(s) you imported, tidied, and analyzed***
+
+
+
+
+***5. A series of individual findings and plots (separate subsections for each team member)***
+
+Drew
+
+```{r}
+nl_adj <- nlpitching %>% filter (ERA < 9)
+hist(nl_adj$ERA)
+nl_avg <- (sum(nlpitching$ER) / 21732.66667) * 9
+# NL average ERA: 4.39
+
+al_adj <- alpitching %>% filter (ERA < 9)
+hist(al_adj$ERA)
+al_avg <- (sum(alpitching$ER) / 21690.66667) * 9
+# AL average ERA: 4.62
+
+
+
+```
+
+Tanner
+
+Question: How does the designated hitter affect pitchers? Using average OPS (on-base plus slugging, or the ability for a hitter to get on base and to hit for power), we will see how the American League, which has the designated hitter in place of a batting pitcher, compares to the National League, where pitchers face a pitcher at the plate. Do NL pitchers give up a lower average OPS than AL pitchers? Furthermore, how much does the batting pitcher affect OPS? We will discover this by taking pitchers out of the average.
+
+Findings: 
+
+```{r}
+al_ops <- mean(albatting$OPS, na.rm=T) #AL all-batters average OPS: 0.5563
+nl_ops <- mean(nlbatting$OPS, na.rm=T) #NL all-batters average OPS: 0.4915
+
+al_noPitchers <- albatting %>% filter(Pos.Summary != 1, Pos.Summary != "/1") # filter out pitchers
+nl_noPitchers <- nlbatting %>% filter(Pos.Summary != 1, Pos.Summary != "/1")
+
+alNonPitcher_ops <- mean(al_noPitchers$OPS, na.rm=T) #AL Non-Pitcher average OPS: 0.6699
+nlNonPitcher_ops <- mean(nl_noPitchers$OPS, na.rm=T) #NL Non-Pitcher average OPS: 0.6689
+
+
+```
+
+David
+
+Question: Does having a better FIP lead to getting more wins?
+
+Findings: Based on these data, having a better (lower) FIP is beneficial in getting more wins. However, it will not be the only reason why a team will win a game as the relationship between number of wins and FIP is rather weak; though it is still important. Furthermore, playoff teams generally had a FIP lower than 6, except for Washington (9.2 FIP) . This suggests that Washington was able to compensate for their high FIP.
+
+```{r}
+library(tidyverse)
+alpitching <- read.csv(file="alpitching.csv", header=TRUE, sep=",")
+nlpitching <- read.csv(file="nlpitching.csv", header=TRUE, sep=",")
+
+#Data By Team
+  #FIP
+
+FIPalByTeam <- alpitching %>% select(Tm,FIP) %>%
+  group_by(Tm) %>% summarise(meanFIP = mean(FIP, na.rm = TRUE))
+
+FIPnlByTeam <- nlpitching %>% select(Tm,FIP) %>%
+  group_by(Tm) %>% summarise(meanFIP = mean(FIP, na.rm = TRUE))
+
+MLBFIPByTeam <- full_join(FIPalByTeam, FIPnlByTeam)
+MLBFIPByTeam <- MLBFIPByTeam [-c(16,31),]
+  
+  #Wins
+
+Wins <- tribble(
+  ~Tm, ~W,
+  "NYY", 103,
+  "TBR", 96,
+  "BOS", 84,
+  "TOR", 67,
+  "BAL", 54,
+  "MIN", 101,
+  "CLE", 93,
+  "CHW", 72,
+  "KCR", 59,
+  "DET", 47,
+  "HOU", 107,
+  "OAK", 97,
+  "TEX", 78,
+  "LAA", 72,
+  "SEA", 68,
+  "ATL", 97,
+  "WSN", 93,
+  "NYM", 86,
+  "PHI", 81,
+  "MIA", 57,
+  "STL", 91,
+  "MIL", 89,
+  "CHC", 84,
+  "CIN", 75,
+  "PIT", 69,
+  "LAD", 106,
+  "ARI", 85,
+  "SFG", 77,
+  "COL", 71,
+  "SDP", 70)
+  
+  #FIP and Wins for all teams and playoff teams
+
+Data <- full_join(MLBFIPByTeam,Wins)
+Playoffs <- Data[c(10,13,9,6,11,17,30,29,23,21),]
+
+```
+
+
+```{r}
+#Plot FIP and Wins
+
+ggplot(Data, aes(meanFIP,W, color = Tm)) +
+  geom_point() +
+  ylab("Wins") +
+  xlab("FIP") +
+  ggtitle("Wins and FIP of MLB Teams")
+```
+
+```{r}
+#Plot For Playoff Teams
+
+ggplot(Playoffs, aes(meanFIP,W, color = Tm)) +
+  geom_point() +
+  ylab("Wins") +
+  xlab("FIP") +
+  ggtitle("Wins and FIP of MLB Playoff Teams")
+```
+***6. A brief (one sentence) reflection on the ethics of your data science work. Could your analyses be used to cause harm to some entity? Who will it benefit?***
+
+
+
+***7. A summary of who did what and what functions you used.***
+
+David: I used the alpiching and nlpitching datasets to show the relationship between FIP and number of wins. group_by() and mean() were used to get the average FIP of each team. I also created a tribble that showed how many wins each team got. Also, full_join was used to merge all of the datasets together into one in order to make a scatter plot.
+
+
+
+
 
